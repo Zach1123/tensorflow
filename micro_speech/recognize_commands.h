@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_LITE_MICRO_EXAMPLES_MICRO_SPEECH_RECOGNIZE_COMMANDS_H_
-#define TENSORFLOW_LITE_MICRO_EXAMPLES_MICRO_SPEECH_RECOGNIZE_COMMANDS_H_
+#ifndef TENSORFLOW_LITE_EXPERIMENTAL_MICRO_EXAMPLES_MICRO_SPEECH_RECOGNIZE_COMMANDS_H_
+#define TENSORFLOW_LITE_EXPERIMENTAL_MICRO_EXAMPLES_MICRO_SPEECH_RECOGNIZE_COMMANDS_H_
 
 #include <cstdint>
 
-#include "tensorflow/lite/c/common.h"
-#include "tensorflow/lite/micro/examples/micro_speech/micro_features/micro_model_settings.h"
-#include "tensorflow/lite/micro/micro_error_reporter.h"
+#include "tensorflow/lite/c/c_api_internal.h"
+#include "micro_model_settings.h"
+#include "tensorflow/lite/experimental/micro/micro_error_reporter.h"
 
 // Partial implementation of std::dequeue, just providing the functionality
 // that's needed to keep a record of previous neural network results over a
@@ -36,14 +36,14 @@ class PreviousResultsQueue {
   // Data structure that holds an inference result, and the time when it
   // was recorded.
   struct Result {
-    Result() : time_(0), scores() {}
-    Result(int32_t time, int8_t* input_scores) : time_(time) {
+    Result() : time_(0), scores_() {}
+    Result(int32_t time, uint8_t* scores) : time_(time) {
       for (int i = 0; i < kCategoryCount; ++i) {
-        scores[i] = input_scores[i];
+        scores_[i] = scores[i];
       }
     }
     int32_t time_;
-    int8_t scores[kCategoryCount];
+    uint8_t scores_[kCategoryCount];
   };
 
   int size() { return size_; }
@@ -59,8 +59,7 @@ class PreviousResultsQueue {
 
   void push_back(const Result& entry) {
     if (size() >= kMaxResults) {
-      TF_LITE_REPORT_ERROR(
-          error_reporter_,
+      error_reporter_->Report(
           "Couldn't push_back latest result, too many already!");
       return;
     }
@@ -70,8 +69,7 @@ class PreviousResultsQueue {
 
   Result pop_front() {
     if (size() <= 0) {
-      TF_LITE_REPORT_ERROR(error_reporter_,
-                           "Couldn't pop_front result, none present!");
+      error_reporter_->Report("Couldn't pop_front result, none present!");
       return Result();
     }
     Result result = front();
@@ -88,8 +86,7 @@ class PreviousResultsQueue {
   // queue.
   Result& from_front(int offset) {
     if ((offset < 0) || (offset >= size_)) {
-      TF_LITE_REPORT_ERROR(error_reporter_,
-                           "Attempt to read beyond the end of the queue!");
+      error_reporter_->Report("Attempt to read beyond the end of the queue!");
       offset = size_ - 1;
     }
     int index = front_index_ + offset;
@@ -130,17 +127,10 @@ class RecognizeCommands {
   // initially being populated for example. The suppression argument disables
   // further recognitions for a set time after one has been triggered, which can
   // help reduce spurious recognitions.
-  explicit RecognizeCommands(tflite::ErrorReporter* error_reporter,
-                             int32_t average_window_duration_ms = 1000,
-                             uint8_t detection_threshold = 200,
-                             int32_t suppression_ms = 1500,
-                             int32_t minimum_count = 3);
+  explicit RecognizeCommands(tflite::ErrorReporter* error_reporter, int32_t average_window_duration_ms = 1000, uint8_t detection_threshold = 200, int32_t suppression_ms = 1500, int32_t minimum_count = 3);
 
   // Call this with the results of running a model on sample data.
-  TfLiteStatus ProcessLatestResults(const TfLiteTensor* latest_results,
-                                    const int32_t current_time_ms,
-                                    const char** found_command, uint8_t* score,
-                                    bool* is_new_command);
+  TfLiteStatus ProcessLatestResults(const TfLiteTensor* latest_results, const int32_t current_time_ms, const char** found_command, uint8_t* score, bool* is_new_command);
 
  private:
   // Configuration
@@ -156,4 +146,4 @@ class RecognizeCommands {
   int32_t previous_top_label_time_;
 };
 
-#endif  // TENSORFLOW_LITE_MICRO_EXAMPLES_MICRO_SPEECH_RECOGNIZE_COMMANDS_H_
+#endif  // TENSORFLOW_LITE_EXPERIMENTAL_MICRO_EXAMPLES_MICRO_SPEECH_RECOGNIZE_COMMANDS_H_
